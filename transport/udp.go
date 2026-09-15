@@ -1,20 +1,43 @@
 package transport
 
 import (
-	"errors"
 	"net"
 	"time"
 )
 
+// UDP contains only socket I/O; packet parsing and metrics live elsewhere.
 type UDP struct{ Conn net.Conn }
+
 type Server struct{ Conn net.PacketConn }
 
-// TODO: использовать системные UDP-сокеты через net.Dial/ListenPacket.
-func Dial(address string) (*UDP, error)                      { return nil, errors.New("TODO: Dial") }
-func Listen(address string) (*Server, error)                 { return nil, errors.New("TODO: Listen") }
-func (u *UDP) Close() error                                  { return nil }
-func (u *UDP) Send(b []byte) error                           { return errors.New("TODO: Send") }
-func (u *UDP) Receive(timeout time.Duration) ([]byte, error) { return nil, errors.New("TODO: Receive") }
-func (s *Server) Close() error                               { return nil }
-func (s *Server) Receive() ([]byte, net.Addr, error)         { return nil, nil, errors.New("TODO: Receive") }
-func (s *Server) Send(b []byte, addr net.Addr) error         { return errors.New("TODO: Send") }
+func Listen(address string) (*Server, error) {
+	c, err := net.ListenPacket("udp", address)
+	if err != nil {
+		return nil, err
+	}
+	return &Server{Conn: c}, nil
+}
+func (s *Server) Close() error { return s.Conn.Close() }
+func (s *Server) Receive() ([]byte, net.Addr, error) {
+	b := make([]byte, 1024)
+	n, addr, err := s.Conn.ReadFrom(b)
+	return b[:n], addr, err
+}
+func (s *Server) Send(b []byte, addr net.Addr) error { _, err := s.Conn.WriteTo(b, addr); return err }
+
+func Dial(address string) (*UDP, error) {
+	c, err := net.Dial("udp", address)
+	if err != nil {
+		return nil, err
+	}
+	return &UDP{Conn: c}, nil
+}
+
+func (u *UDP) Close() error        { return u.Conn.Close() }
+func (u *UDP) Send(b []byte) error { _, err := u.Conn.Write(b); return err }
+func (u *UDP) Receive(timeout time.Duration) ([]byte, error) {
+	u.Conn.SetReadDeadline(time.Now().Add(timeout))
+	b := make([]byte, 1024)
+	n, err := u.Conn.Read(b)
+	return b[:n], err
+}
