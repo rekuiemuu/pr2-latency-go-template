@@ -1,7 +1,14 @@
-# Практическая работа 2: шаблон на Go
+# Практическая работа 2: UDP RTT
 
-Этот репозиторий — **заготовка**, не готовое решение. Замените `TODO` в пакетах `protocol`, `telemetry`, `transport` и программах `cmd/server`, `cmd/client`. Формат пакетов и требования — в [спецификации](docs/Protocol_Specification.md).
+Go-программы разделены на `protocol` (пакеты), `transport` (UDP-сокет) и `telemetry` (метрики).
 
-Необходимые результаты: PING/PONG, RTT/SRTT/джиттер/потери, проверка ошибочных ответов, 6 серий по 50 PING, `docs/latency_samples.csv`, отчёт с графиками. Проверка: `go test ./...`.
+Запуск одной серии в двух терминалах:
 
-Второй репозиторий с решением должен быть форком этого шаблона, чтобы из ветки `feature/latency-measurement` можно было открыть PR в `main` шаблона.
+```powershell
+go run -buildvcs=false ./cmd/server -mode baseline
+go run -buildvcs=false ./cmd/client -series baseline -count 50 -interval 200ms
+```
+
+Для других серий замените `baseline` на `delay_50`, `delay_100`, `jitter`, `loss_5` или `combined`. Между сериями перезапускайте сервер. Клиент дописывает измерения в `docs/latency_samples.csv`; перед полным повтором используйте новый путь через `-csv`, чтобы не смешать серии.
+
+Тесты: `go test -buildvcs=false ./...`. Графики и отчёт из CSV: `go run -buildvcs=false ./cmd/report`.
